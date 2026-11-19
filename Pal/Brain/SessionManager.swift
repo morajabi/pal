@@ -111,6 +111,10 @@ final class SessionManager: ObservableObject {
     var accounts: Accounts!
     /// Pal shows these on the card / as notifications.
     var onUpdate: ((AgentSession, Update) -> Void)?
+    /// A session just started (origin: "user", "agent …", "scheduled task …").
+    var onStarted: ((AgentSession, String) -> Void)?
+    /// A short progress line while a session works ("searching the web", a brief note).
+    var onProgress: ((AgentSession, String) -> Void)?
 
     private var idleTimers: [String: Timer] = [:]
     private var saveWork: DispatchWorkItem?
@@ -149,6 +153,7 @@ final class SessionManager: ObservableObject {
         observe(s)
         s.add(.user, task)
         launch(s, firstMessage: Self.firstMessage(task: task, origin: origin))
+        onStarted?(s, origin)
         scheduleSave()
         return s
     }
@@ -236,10 +241,14 @@ final class SessionManager: ObservableObject {
             s.activity = "writing"
         case .message(let text):
             // Intermediate messages are progress notes; the final one arrives with turnFinished.
-            if s.backend?.isBusy == true { s.add(.agent, text) }
+            if s.backend?.isBusy == true {
+                s.add(.agent, text)
+                onProgress?(s, Self.progressLine(text))
+            }
         case .tool(let name):
             s.activity = name
             s.add(.tool, name)
+            onProgress?(s, name)
         case .sessionID(let id):
             s.harnessID = id
         case .turnFinished(let result):
@@ -324,6 +333,13 @@ final class SessionManager: ObservableObject {
 
     private static func newID() -> String {
         String(UUID().uuidString.lowercased().replacingOccurrences(of: "-", with: "").prefix(6))
+    }
+
+    /// First sentence of a note, trimmed for a one-line progress display.
+    static func progressLine(_ text: String) -> String {
+        let plain = ParsedReply.plain(text.components(separatedBy: "\n---").first ?? text)
+        let first = plain.components(separatedBy: CharacterSet(charactersIn: ".!?\n")).first ?? plain
+        return first.count > 90 ? String(first.prefix(88)) + "…" : first
     }
 
     static func shortTitle(_ task: String) -> String {

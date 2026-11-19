@@ -37,7 +37,7 @@ final class Listener {
         let wanted = c.sttLocale == "auto" ? Locale.current : Locale(identifier: c.sttLocale)
         let loc: Locale
         switch c.sttEngine {
-        case .speechTranscriber: loc = await SpeechTranscriber.supportedLocale(equivalentTo: wanted) ?? Locale(identifier: "en-US")
+        case .speechTranscriber, .openai: loc = await SpeechTranscriber.supportedLocale(equivalentTo: wanted) ?? Locale(identifier: "en-US")
         case .dictation: loc = await DictationTranscriber.supportedLocale(equivalentTo: wanted) ?? Locale(identifier: "en-US")
         }
         let module: any SpeechModule = c.sttEngine == .dictation
@@ -55,7 +55,7 @@ final class Listener {
     /// Languages the chosen engine can transcribe.
     static func supportedLocales(_ engine: STTEngine) async -> [Locale] {
         switch engine {
-        case .speechTranscriber: return await SpeechTranscriber.supportedLocales
+        case .speechTranscriber, .openai: return await SpeechTranscriber.supportedLocales
         case .dictation: return await DictationTranscriber.supportedLocales
         }
     }
@@ -76,6 +76,8 @@ final class Listener {
         isRunning = true
         finalized = ""
         volatile = ""
+        // OpenAI transcribes the whole clip at the end; Apple's live text still drives the dot and pauses.
+        feed.setRecording(PalSettings.c.sttEngine == .openai && OpenAIVoice.isConfigured)
 
         let (stream, continuation) = AsyncStream<AnalyzerInput>.makeStream(bufferingPolicy: .unbounded)
         self.continuation = continuation
@@ -125,8 +127,19 @@ final class Listener {
         if let resultsTask {
             _ = try? await withTimeout(seconds: 1.5) { await resultsTask.value }
         }
+        let (pcm, rate) = feed.takeRecording()
+        let local = transcript
         cleanup()
-        return transcript
+        if pcm.count > rate, PalSettings.c.sttEngine == .openai { // at least ~0.5 s of audio
+            let language = locale?.language.languageCode?.identifier
+            let model = PalSettings.c.openAITranscribeModel
+            if let text = try? await withTimeout(seconds: 20, {
+                try await OpenAIVoice.transcribe(wav: OpenAIVoice.wav(pcm16: pcm, sampleRate: rate), model: model, language: language)
+            }), !text.isEmpty {
+                return text
+            }
+        }
+        return local
     }
 
     func cancel() {
@@ -146,7 +159,7 @@ final class Listener {
     /// The recognizer module plus its results as (text, isFinal).
     private static func makeModule(_ engine: STTEngine, _ locale: Locale) -> (module: any SpeechModule, results: AsyncThrowingStream<(String, Bool), Error>) {
         switch engine {
-        case .speechTranscriber:
+        case .speechTranscriber, .openai:
             let t = SpeechTranscriber(locale: locale, transcriptionOptions: [], reportingOptions: [.volatileResults, .fastResults], attributeOptions: [])
             return (t, AsyncThrowingStream { cont in
                 Task {
@@ -212,7 +225,29 @@ final class AudioFeed: @unchecked Sendable {
     private var outputFormat: AVAudioFormat?
     private var converter: AVAudioConverter?
     private var pending: [AVAudioPCMBuffer] = []
+    private var recording = false
+    private var pcm = Data()
     private let lock = NSLock()
+
+    func setRecording(_ on: Bool) {
+        lock.lock(); defer { lock.unlock() }
+        recording = on
+        pcm = Data()
+    }
+
+    /// The 16-bit mono audio captured since recording started, and its sample rate.
+    func takeRecording() -> (Data, Int) {
+        lock.lock(); defer { lock.unlock() }
+        let out = pcm
+        pcm = Data()
+        return (out, Int(outputFormat?.sampleRate ?? 16000))
+    }
+
+    private func record(_ b: AVAudioPCMBuffer) {
+        guard recording, b.format.commonFormat == .pcmFormatInt16, b.format.channelCount == 1,
+              let ch = b.int16ChannelData?[0] else { return }
+        pcm.append(UnsafeBufferPointer(start: ch, count: Int(b.frameLength)))
+    }
 
     func setInputFormat(_ f: AVAudioFormat) {
         lock.lock(); defer { lock.unlock() }
@@ -243,11 +278,14 @@ final class AudioFeed: @unchecked Sendable {
         converter = nil
         pending = []
     }
+    // Note: clear() keeps any recording until takeRecording(), so stop() can read it after cleanup.
 
     private func convertLocked(_ buffer: AVAudioPCMBuffer) -> AnalyzerInput? {
         guard let outputFormat, buffer.frameLength > 0 else { return nil }
         if buffer.format == outputFormat {
-            return (buffer.copy() as? AVAudioPCMBuffer).map { AnalyzerInput(buffer: $0) }
+            guard let copy = buffer.copy() as? AVAudioPCMBuffer else { return nil }
+            record(copy)
+            return AnalyzerInput(buffer: copy)
         }
         if converter == nil {
             converter = AVAudioConverter(from: inputFormat ?? buffer.format, to: outputFormat)
@@ -266,6 +304,7 @@ final class AudioFeed: @unchecked Sendable {
             return buffer
         }
         guard status != .error, out.frameLength > 0 else { return nil }
+        record(out)
         return AnalyzerInput(buffer: out)
     }
 }

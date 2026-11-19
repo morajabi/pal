@@ -32,7 +32,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// pal://ask?q=…  (also handy from Raycast, Shortcuts, scripts)
     func application(_ application: NSApplication, open urls: [URL]) {
-        for url in urls where url.scheme == "pal" {
+        let schemes = ((Bundle.main.infoDictionary?["CFBundleURLTypes"] as? [[String: Any]])?.first?["CFBundleURLSchemes"] as? [String]) ?? ["pal"]
+        for url in urls where schemes.contains(url.scheme ?? "") {
             let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
             let q = items.first { $0.name == "q" || $0.name == "text" }?.value ?? ""
             switch url.host {

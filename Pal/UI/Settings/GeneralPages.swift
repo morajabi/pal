@@ -182,14 +182,25 @@ struct VoicePage: View {
     @ObservedObject var settings: PalSettings
     @State private var locales: [Locale] = []
     @State private var voices: [VoiceOption] = []
+    @State private var openAIKeySaved = OpenAIVoice.isConfigured
+    @State private var keyDraft = ""
+
+    private var c: PalConfig { settings.config }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            SettingsSection(title: "Listening", footer: "Speech is turned into text on your Mac. The first use of a language downloads its model.") {
+            SettingsSection(title: "Listening", footer: c.sttEngine == .openai
+                ? "Apple's on-device recognizer still drives the live text and pause detection; OpenAI transcribes the finished clip. If OpenAI fails, Pal uses the on-device text."
+                : "Speech is turned into text on your Mac. The first use of a language downloads its model.") {
                 SettingsRow(title: "Speech to text") {
                     Picker("", selection: $settings.config.sttEngine) {
                         ForEach(STTEngine.allCases) { Text($0.title).tag($0) }
                     }.labelsHidden().fixedSize()
+                }
+                if c.sttEngine == .openai {
+                    SettingsRow(title: "Transcription model") {
+                        TextField("", text: $settings.config.openAITranscribeModel).frame(width: 200)
+                    }
                 }
                 SettingsRow(title: "Language") {
                     Picker("", selection: $settings.config.sttLocale) {
@@ -200,25 +211,66 @@ struct VoicePage: View {
                     }.labelsHidden().fixedSize()
                 }
             }
-            SettingsSection(title: "Speaking", footer: "Off by default: every answer card has a speaker button to hear it. Better voices: download Premium or Enhanced voices in System Settings › Accessibility › Spoken Content.") {
+            SettingsSection(title: "Speaking", footer: "Off by default: every answer card has a speaker button to hear it.") {
                 SettingsRow(title: "Speak answers automatically", note: "Reads the short answer aloud when you asked by voice. Skipped when the Mac is muted.") {
                     Toggle("", isOn: $settings.config.speakReplies).toggleStyle(.switch).labelsHidden()
                 }
                 SettingsRow(title: "Speak agent updates") {
                     Toggle("", isOn: $settings.config.speakAgentUpdates).toggleStyle(.switch).labelsHidden()
                 }
-                SettingsRow(title: "Voice") {
-                    HStack {
-                        Picker("", selection: $settings.config.ttsVoice) {
-                            Text("Best available").tag("")
-                            ForEach(voices) { v in Text("\(v.name) · \(v.quality) · \(v.language)").tag(v.id) }
-                        }.labelsHidden().fixedSize()
-                        Button("Preview") { pal.speaker.speak("Hi, I'm Pal. Your pasta has two minutes left.", force: true) }
+                SettingsRow(title: "Voices") {
+                    Picker("", selection: $settings.config.ttsEngine) {
+                        ForEach(TTSEngine.allCases) { Text($0.title).tag($0) }
+                    }.labelsHidden().fixedSize()
+                }
+                if c.ttsEngine == .openai {
+                    SettingsRow(title: "Voice") {
+                        HStack {
+                            Picker("", selection: $settings.config.openAIVoice) {
+                                ForEach(OpenAIVoice.voices, id: \.self) { Text($0.capitalized).tag($0) }
+                            }.labelsHidden().fixedSize()
+                            previewButton
+                        }
+                    }
+                    SettingsRow(title: "Style", note: "How it should sound, in plain words.") {
+                        TextField("", text: $settings.config.openAIVoiceStyle).frame(width: 260)
+                    }
+                    SettingsRow(title: "Speech model") {
+                        TextField("", text: $settings.config.openAITTSModel).frame(width: 200)
+                    }
+                } else {
+                    SettingsRow(title: "Voice", note: "Get Premium or Enhanced voices in System Settings › Accessibility › Spoken Content.") {
+                        HStack {
+                            Picker("", selection: $settings.config.ttsVoice) {
+                                Text("Best available").tag("")
+                                ForEach(voices) { v in Text("\(v.name) · \(v.quality) · \(v.language)").tag(v.id) }
+                            }.labelsHidden().fixedSize()
+                            previewButton
+                        }
+                    }
+                    SliderRow(title: "Speed", value: $settings.config.ttsRate, range: 0.35...0.65, step: 0.01) { String(format: "%.0f%%", ($0 / 0.5) * 100) }
+                    SettingsRow(title: "More voices") {
+                        Button("Open Spoken Content…") { NSWorkspace.shared.open(Speaker.downloadVoicesURL) }
                     }
                 }
-                SliderRow(title: "Speed", value: $settings.config.ttsRate, range: 0.35...0.65, step: 0.01) { String(format: "%.0f%%", ($0 / 0.5) * 100) }
-                SettingsRow(title: "More voices") {
-                    Button("Open Spoken Content…") { NSWorkspace.shared.open(Speaker.downloadVoicesURL) }
+            }
+            if c.sttEngine == .openai || c.ttsEngine == .openai {
+                SettingsSection(title: "OpenAI", footer: "Used only for voice. The key is kept in your Keychain. Get one at platform.openai.com.") {
+                    SettingsRow(title: "API key") {
+                        HStack {
+                            if openAIKeySaved {
+                                StatePill(text: "Saved", good: true)
+                                Button("Remove") { Keychain.delete(OpenAIVoice.keyAccount); openAIKeySaved = false }
+                            } else {
+                                SecureField("sk-…", text: $keyDraft).frame(width: 200)
+                                Button("Save") {
+                                    Keychain.set(keyDraft.trimmingCharacters(in: .whitespacesAndNewlines), for: OpenAIVoice.keyAccount)
+                                    keyDraft = ""
+                                    openAIKeySaved = OpenAIVoice.isConfigured
+                                }.disabled(keyDraft.trimmingCharacters(in: .whitespaces).isEmpty)
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -227,5 +279,9 @@ struct VoicePage: View {
                 .sorted { (Locale.current.localizedString(forIdentifier: $0.identifier) ?? "") < (Locale.current.localizedString(forIdentifier: $1.identifier) ?? "") }
         }
         .onAppear { voices = Speaker.voices() }
+    }
+
+    private var previewButton: some View {
+        Button("Preview") { pal.speaker.speak("Hi, I'm Pal. Your pasta has two minutes left.", force: true) }
     }
 }

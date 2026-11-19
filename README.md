@@ -14,6 +14,8 @@ Download the latest **Pal-<version>.dmg** from [Releases](https://github.com/mor
 - [Codex](https://developers.openai.com/codex/cli) with ChatGPT
 - a Claude API key
 
+Optional: an OpenAI API key, for OpenAI transcription and voices.
+
 ## Use
 
 - **Hold Right Option** and talk, or press **⌥ Space**, or click the dot.

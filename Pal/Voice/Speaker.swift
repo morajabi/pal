@@ -9,34 +9,72 @@ struct VoiceOption: Identifiable, Hashable {
     var quality: String
 }
 
-/// Text-to-speech with the user's chosen system voice. Skips speaking when the Mac is muted.
-final class Speaker: NSObject, AVSpeechSynthesizerDelegate {
+/// Text-to-speech: Mac voices on-device, or OpenAI voices (falls back to the Mac voice on any error).
+/// Skips speaking when the Mac is muted.
+final class Speaker: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlayerDelegate {
     var onSpeakingChanged: ((Bool) -> Void)?
     private let synth = AVSpeechSynthesizer()
+    private var player: AVAudioPlayer?
+    private var fetch: Task<Void, Never>?
 
     override init() {
         super.init()
         synth.delegate = self
     }
 
-    var isSpeaking: Bool { synth.isSpeaking }
+    var isSpeaking: Bool { synth.isSpeaking || (player?.isPlaying ?? false) || fetch != nil }
 
     /// Returns false if nothing was spoken (muted, empty).
     @discardableResult
     func speak(_ text: String, force: Bool = false) -> Bool {
         let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !t.isEmpty, force || !Self.outputIsSilent() else { return false }
-        synth.stopSpeaking(at: .immediate)
+        stop()
+        let c = PalSettings.c
+        if c.ttsEngine == .openai, OpenAIVoice.isConfigured {
+            onSpeakingChanged?(true)
+            fetch = Task { @MainActor [weak self] in
+                do {
+                    let audio = try await OpenAIVoice.speech(t, model: c.openAITTSModel, voice: c.openAIVoice, style: c.openAIVoiceStyle)
+                    guard let self, !Task.isCancelled else { return }
+                    self.fetch = nil
+                    let p = try AVAudioPlayer(data: audio)
+                    p.delegate = self
+                    self.player = p
+                    p.play()
+                } catch {
+                    guard let self, !Task.isCancelled else { return }
+                    self.fetch = nil
+                    log.error("OpenAI voice failed: \(error.localizedDescription, privacy: .public)")
+                    self.speakWithMac(t)
+                }
+            }
+            return true
+        }
+        speakWithMac(t)
+        return true
+    }
+
+    private func speakWithMac(_ t: String) {
         let u = AVSpeechUtterance(string: t)
         u.voice = Self.voice(PalSettings.c.ttsVoice)
         u.rate = Float(PalSettings.c.ttsRate)
         u.prefersAssistiveTechnologySettings = false
         synth.speak(u)
-        return true
     }
 
     func stop() {
+        let wasFetching = fetch != nil
+        fetch?.cancel()
+        fetch = nil
+        if let player, player.isPlaying { player.stop(); onSpeakingChanged?(false) }
+        else if wasFetching { onSpeakingChanged?(false) }
+        player = nil
         if synth.isSpeaking { synth.stopSpeaking(at: .immediate) }
+    }
+
+    func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        DispatchQueue.main.async { self.player = nil; self.onSpeakingChanged?(false) }
     }
 
     func speechSynthesizer(_ s: AVSpeechSynthesizer, didStart u: AVSpeechUtterance) {

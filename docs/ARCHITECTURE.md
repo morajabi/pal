@@ -6,11 +6,11 @@ This is a snapshot of the current design. All of it is meant to change. The seam
 | --- | --- | --- |
 | Settings | `App/Config.swift` | `PalConfig` is one Codable struct. New fields fall back to their defaults, so adding settings never breaks old saves. |
 | Model backends | `Brain/*Backend.swift` | The `Backend` protocol: Claude Code (`claude -p` stream-json), Codex (`app-server`), Claude API (raw SSE). Add a backend by adding a case to `ProviderID` and to `Backends.make`. |
-| Quick tier | `Brain/Brain.swift`, `Brain/Prompts.swift` | A fast model answers, does small tasks, and calls `start_agent` for bigger ones. |
+| Quick tier | `Brain/Brain.swift`, `Brain/Prompts.swift` | A fast model handles most requests itself (tools, several steps) and calls `start_agent` only for long or heavy work, passing the request close to the user's words. The card follows handed-off work with short progress lines. |
 | Agents | `Brain/SessionManager.swift` | Long-lived backend conversations with history. They resume natively, or from a recap. |
 | Tools | `Tools/` | `PalTool` and `ToolRegistry`. Served over MCP from inside the app (`MCPServer` + `Pal --mcp-bridge`), so tools run with Pal's permissions. Add a group, then register it in `Pal.registerTools()`. |
 | Schedules | `Schedule/` | Jobs (once, every N minutes, daily, weekdays) that start an agent, wake one, or just notify. |
-| Voice | `Voice/` | Mic + SpeechAnalyzer, AVSpeech, hotkeys. |
+| Voice | `Voice/` | Mic + SpeechAnalyzer (live text and pauses). Engines: Apple Speech, Apple Dictation, or OpenAI transcription of the finished clip. Speech: Mac voices or OpenAI voices (`OpenAIVoice.swift`). Codex also offers experimental OpenAI realtime voice under a ChatGPT sign-in, which could be another engine later. |
 | UI | `UI/` | Dot and card (floating panels), menu bar window, `Settings/` pages. |
 | Updates | `System/Updater.swift` | Sparkle; off in dev builds. |
 

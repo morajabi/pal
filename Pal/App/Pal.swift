@@ -36,6 +36,8 @@ final class Pal: NSObject {
     private var permissionPoll: Timer?
     private var alarmRepeats: Timer?
     private var bag = Set<AnyCancellable>()
+    /// Agents started for something the user just asked: session id → their question (the card follows these).
+    private var followed: [String: String] = [:]
 
     static private(set) weak var shared: Pal?
 
@@ -299,7 +301,12 @@ final class Pal: NSObject {
             case .success(let reply):
                 self.model.headline = reply.spoken
                 self.model.detail = reply.detail
-                self.model.activity = ""
+                // Work handed off for this question keeps showing its progress here.
+                if let id = self.model.cardSessionID, let s = self.sessions.session(id), s.status.isActive {
+                    self.model.activity = s.activity.isEmpty ? "working on it" : s.activity
+                } else {
+                    self.model.activity = ""
+                }
                 let secs = Date().timeIntervalSince(started)
                 self.model.footnote = "\(provider?.title ?? "") · \(String(format: "%.1fs", secs))"
                 self.showCard()
@@ -343,6 +350,15 @@ final class Pal: NSObject {
     // MARK: Agents, timers, schedules → the user
 
     private func wireAgents() {
+        sessions.onStarted = { [weak self] s, origin in
+            guard let self, origin == "user", self.model.phase == .thinking, self.model.cardKind == .answer else { return }
+            self.followed[s.id] = self.model.caption
+            self.model.cardSessionID = s.id
+        }
+        sessions.onProgress = { [weak self] s, line in
+            guard let self, self.model.cardSessionID == s.id, self.model.cardVisible, !line.isEmpty else { return }
+            self.model.activity = line
+        }
         sessions.onUpdate = { [weak self] s, update in
             guard let self else { return }
             let c = PalSettings.c
@@ -410,7 +426,9 @@ final class Pal: NSObject {
             return
         }
         model.cardKind = kind
-        model.caption = "Agent · \(s.title)"
+        // Results for something you asked read as answers to it; other updates name their source.
+        // Every update for something you asked keeps your question as its caption (watchers report more than once).
+        model.caption = followed[s.id] ?? "Update · \(s.title)"
         model.headline = headline
         model.detail = detail
         model.footnote = "\(s.provider.title) · \(s.model.model)"

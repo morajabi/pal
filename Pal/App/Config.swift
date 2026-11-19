@@ -143,12 +143,24 @@ enum CardAutoHide: Int, Codable, CaseIterable, Identifiable {
 }
 
 enum STTEngine: String, Codable, CaseIterable, Identifiable {
-    case speechTranscriber, dictation
+    case speechTranscriber, dictation, openai
     var id: String { rawValue }
     var title: String {
         switch self {
-        case .speechTranscriber: "Apple Speech (on-device, best for questions)"
+        case .speechTranscriber: "Apple Speech (on-device)"
         case .dictation: "Apple Dictation (on-device, adds punctuation)"
+        case .openai: "OpenAI (most accurate, API key)"
+        }
+    }
+}
+
+enum TTSEngine: String, Codable, CaseIterable, Identifiable {
+    case system, openai
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .system: "Mac voices (on-device)"
+        case .openai: "OpenAI voices (API key)"
         }
     }
 }
@@ -207,6 +219,11 @@ struct PalConfig: Codable, Equatable {
     var speakReplies = false
     var ttsVoice = ""            // empty = best installed voice
     var ttsRate: Double = 0.52
+    var ttsEngine: TTSEngine = .system
+    var openAITranscribeModel = "gpt-4o-transcribe"
+    var openAITTSModel = "gpt-4o-mini-tts"
+    var openAIVoice = "marin"
+    var openAIVoiceStyle = "Warm, natural and brisk, like a helpful friend."
     var speakAgentUpdates = false
     var sounds = true
 

@@ -10,9 +10,9 @@ enum PalCoreTools {
         let sm = SessionManager.shared
         return [
             PalTool("start_agent", "Start an agent", category: .pal,
-                    description: "Hand a bigger task to a background agent with full access to the Mac (shell, files, apps, browser, computer use). It reports back through Pal. Returns the agent id.",
+                    description: "Hand long or heavy work to a background agent with full access to the Mac (shell, files, apps, browser, computer use). Use only when you can't reasonably finish it yourself. Progress and the result reach the user automatically.",
                     props: [
-                        "task": .string("Complete, self-contained instructions including everything the user said"),
+                        "task": .string("The user's request, as close to their own words as possible. Fill in only what they clearly meant; don't add steps, requirements or details."),
                         "title": .string("2–5 word title, e.g. 'Watch Claude sessions'"),
                         "provider": .oneOf(["claude", "codex", "claudeAPI"], "Only if the user asked: claude, codex (ChatGPT) or claudeAPI"),
                         "model": .string("Only if the user asked for a model, e.g. opus, sonnet, gpt-6.2-astra"),
@@ -22,7 +22,7 @@ enum PalCoreTools {
                                      provider: a.string("provider").flatMap(ProviderID.init(rawValue:)),
                                      model: a.string("model"), effort: a.string("effort"),
                                      origin: ctx.tier == .agent ? "agent \(ctx.sessionID)" : "user")
-                return .text("Started agent \(s.id) “\(s.title)” on \(s.provider.title) (\(s.model.model), \(s.model.effort)). It will report back when done.")
+                return .text("Started (id \(s.id)). Progress and the result go to the user automatically; just acknowledge in a few words.")
             },
             PalTool("list_agents", "List agents", category: .pal,
                     description: "List background agents with status and latest update.") { _, _ in

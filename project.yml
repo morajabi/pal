@@ -1,0 +1,45 @@
+name: Pal
+options:
+  bundleIdPrefix: app.pal
+  deploymentTarget:
+    macOS: "26.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MACOSX_DEPLOYMENT_TARGET: "26.0"
+targets:
+  Pal:
+    type: application
+    platform: macOS
+    sources:
+      - path: Pal
+        excludes: ["Info.plist"]
+    configFiles:
+      Debug: Config/Signing.xcconfig
+      Release: Config/Signing.xcconfig
+    info:
+      path: Pal/Info.plist
+      properties:
+        CFBundleName: Pal
+        CFBundleDisplayName: Pal
+        CFBundleShortVersionString: "0.1.0"
+        CFBundleVersion: "1"
+        LSUIElement: true
+        LSApplicationCategoryType: public.app-category.productivity
+        NSMicrophoneUsageDescription: Pal listens while you hold the talk key so it can answer your question.
+        NSSpeechRecognitionUsageDescription: Pal turns what you say into text on your Mac.
+        NSRemindersFullAccessUsageDescription: Pal reads and adds reminders when you ask.
+        NSCalendarsFullAccessUsageDescription: Pal reads and adds calendar events when you ask.
+        NSContactsUsageDescription: Pal looks people up when you ask.
+        NSAppleEventsUsageDescription: Pal controls apps like Music and System Events when you ask.
+        CFBundleURLTypes:
+          - CFBundleURLName: app.pal.mac
+            CFBundleURLSchemes: [pal]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.pal.mac
+        PRODUCT_NAME: Pal
+        ENABLE_HARDENED_RUNTIME: NO
+        ENABLE_APP_SANDBOX: NO
+        COMBINE_HIDPI_IMAGES: YES

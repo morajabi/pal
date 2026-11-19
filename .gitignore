@@ -1,0 +1,5 @@
+build/
+Pal.xcodeproj/
+.DS_Store
+xcuserdata/
+Config/Local.xcconfig

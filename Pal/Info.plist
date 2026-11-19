@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>Pal</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>Pal</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>0.1.0</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>app.pal.mac</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>pal</string>
+			</array>
+		</dict>
+	</array>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.productivity</string>
+	<key>LSUIElement</key>
+	<true/>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>Pal controls apps like Music and System Events when you ask.</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>Pal reads and adds calendar events when you ask.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>Pal looks people up when you ask.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Pal listens while you hold the talk key so it can answer your question.</string>
+	<key>NSRemindersFullAccessUsageDescription</key>
+	<string>Pal reads and adds reminders when you ask.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Pal turns what you say into text on your Mac.</string>
+</dict>
+</plist>

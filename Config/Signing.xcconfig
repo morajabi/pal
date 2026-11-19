@@ -1,0 +1,16 @@
+// Code signing.
+//
+// Default: "Sign to Run Locally" (ad-hoc), so anyone can build.
+// macOS ties permissions (Microphone, Accessibility, …) to the signature, so with ad-hoc
+// signing it may ask again after rebuilds. For a stable signature, create
+// Config/Local.xcconfig (git-ignored) containing:
+//
+//   CODE_SIGN_STYLE = Automatic
+//   CODE_SIGN_IDENTITY = Apple Development
+//   DEVELOPMENT_TEAM = <your team id>
+
+CODE_SIGN_STYLE = Manual
+CODE_SIGN_IDENTITY = -
+DEVELOPMENT_TEAM =
+
+#include? "Local.xcconfig"

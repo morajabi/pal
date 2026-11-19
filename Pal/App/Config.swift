@@ -62,13 +62,14 @@ enum ToggleShortcut: String, Codable, CaseIterable, Identifiable {
 }
 
 enum ProviderID: String, Codable, CaseIterable, Identifiable {
-    case claude, codex
+    case claude, codex, claudeAPI
     var id: String { rawValue }
 
     var title: String {
         switch self {
         case .claude: "Claude"
         case .codex: "ChatGPT"
+        case .claudeAPI: "Claude API"
         }
     }
 
@@ -76,18 +77,20 @@ enum ProviderID: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .claude: "Claude Code"
         case .codex: "Codex"
+        case .claudeAPI: "API key"
         }
     }
 }
 
 enum ProviderPreference: String, Codable, CaseIterable, Identifiable {
-    case automatic, claude, codex
+    case automatic, claude, codex, claudeAPI
     var id: String { rawValue }
     var title: String {
         switch self {
         case .automatic: "Automatic"
-        case .claude: "Claude"
-        case .codex: "ChatGPT"
+        case .claude: "Claude (Claude Code)"
+        case .codex: "ChatGPT (Codex)"
+        case .claudeAPI: "Claude API (key)"
         }
     }
     var provider: ProviderID? { ProviderID(rawValue: rawValue) }
@@ -233,8 +236,8 @@ struct PalConfig: Codable, Equatable {
 
     init() {}
 
-    func fast(for p: ProviderID) -> ModelChoice { p == .claude ? claudeFast : codexFast }
-    func agent(for p: ProviderID) -> ModelChoice { p == .claude ? claudeAgent : codexAgent }
+    func fast(for p: ProviderID) -> ModelChoice { p == .codex ? codexFast : claudeFast }
+    func agent(for p: ProviderID) -> ModelChoice { p == .codex ? codexAgent : claudeAgent }
     func isToolEnabled(_ name: String) -> Bool { !disabledTools.contains(name) }
 }
 

@@ -44,7 +44,9 @@ voice/typing ─▶ quick tier (fast model) ──answers──▶ card + voice
 - **Memory**: markdown files in `~/Pal/memory`. Pal saves lasting facts on its own (you can turn this off).
 - **Skills**: `~/Pal/skills/<name>/SKILL.md`. Claude agents also find them natively.
 
-AI comes from what you're already signed in to (Claude Code, Codex with ChatGPT). Pal stores no API keys.
+AI comes from what you're already signed in to: Claude Code, or Codex with ChatGPT. No Claude Code or Codex? Add a Claude API key in Settings › Models. It's kept in the Keychain, and Pal then runs the agent loop itself over the Messages API, using its own tools plus shell and file tools for agents and Anthropic's hosted web search.
+
+Agents that went quiet release their process after an hour. Messaging one later reopens the real Claude Code session or Codex thread, so it remembers everything. If that fails, it continues from a summary.
 
 ## Settings
 
@@ -72,6 +74,7 @@ Testing aids:
 - `open Pal.app --args -debugAsk "question"` asks once at launch.
 - `open "pal://ask?q=..."` asks while Pal is running.
 - `--args -debugSnapshots /tmp/snaps` renders Settings and the menu bar window to PNGs.
+- `--args -debugAPIBase http://127.0.0.1:8787 -debugAPIKey test` points the Claude API backend at a local mock.
 
 ## Layout
 

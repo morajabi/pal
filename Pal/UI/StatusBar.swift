@@ -47,7 +47,7 @@ final class StatusBar: NSObject, NSPopoverDelegate {
         if let tab { state.tab = tab }
         if let sessionID { state.openSession = sessionID; state.tab = .agents }
         guard let button = item.button else { return }
-        NSApp.activate(ignoringOtherApps: true)
+        NSApp.activate()
         if !popover.isShown { popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY) }
         pal.popoverOpened()
     }

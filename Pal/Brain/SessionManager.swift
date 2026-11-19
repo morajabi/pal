@@ -54,6 +54,8 @@ final class AgentSession: ObservableObject, Identifiable {
     @Published var unread = false
     var harnessID: String?
     var backend: Backend?
+    /// Set while trying to resume natively; used to retry with a recap if that fails.
+    var resumeRecap: String?
 
     init(id: String, title: String, task: String, provider: ProviderID, model: ModelChoice) {
         self.id = id
@@ -167,7 +169,13 @@ final class SessionManager: ObservableObject {
 
             New message: \(message)
             """
-            launch(s, firstMessage: recap)
+            if let id = s.harnessID, s.provider != .claudeAPI {
+                // Pick the real conversation back up in Claude Code / Codex; fall back to a recap if that fails.
+                s.resumeRecap = recap
+                launch(s, firstMessage: message, resumeID: id)
+            } else {
+                launch(s, firstMessage: recap)
+            }
         }
         idleTimers[s.id]?.invalidate()
         scheduleSave()
@@ -200,15 +208,16 @@ final class SessionManager: ObservableObject {
 
     // MARK: Internals
 
-    private func launch(_ s: AgentSession, firstMessage: String) {
+    private func launch(_ s: AgentSession, firstMessage: String, resumeID: String? = nil) {
         var servers: [String: MCPServerSpec] = ["pal": MCPBridge.spec(session: s.id, tier: .agent)]
         if let browser = ExternalTools.browserServer(accounts: accounts) { servers[browser.name] = browser.spec }
         let spec = BackendSpec(provider: s.provider, tier: .agent, model: s.model,
                                instructions: Prompts.agent(title: s.title), cwd: Paths.workspace,
-                               mcpServers: servers, fullAccess: PalSettings.c.agentsFullAccess, useUserSetup: true)
+                               mcpServers: servers, fullAccess: PalSettings.c.agentsFullAccess, useUserSetup: true,
+                               sessionID: s.id, resumeID: resumeID)
         guard let backend = Backends.make(spec, accounts: accounts) else {
             s.status = .failed
-            s.add(.note, "\(s.provider.via) isn't installed.")
+            s.add(.note, s.provider == .claudeAPI ? "No Claude API key." : "\(s.provider.via) isn't installed.")
             return
         }
         s.backend = backend
@@ -237,6 +246,7 @@ final class SessionManager: ObservableObject {
             s.activity = ""
             switch result {
             case .success(let text):
+                s.resumeRecap = nil
                 if s.entries.last?.text != text.trimmingCharacters(in: .whitespacesAndNewlines) { s.add(.agent, text) }
                 let reply = ParsedReply.parse(text, final: true)
                 s.summary = reply.spoken
@@ -246,6 +256,15 @@ final class SessionManager: ObservableObject {
                 armIdleTimer(s)
             case .failure(let error):
                 let message = error.localizedDescription
+                if let recap = s.resumeRecap, message != "Stopped." {
+                    // Native resume didn't work (session gone, CLI changed…): start fresh with a recap.
+                    s.resumeRecap = nil
+                    s.backend?.stop()
+                    s.backend = nil
+                    s.add(.note, "Couldn't reopen the old session; continuing from a summary.")
+                    launch(s, firstMessage: recap)
+                    return
+                }
                 if message == "Stopped." {
                     s.status = .stopped
                 } else {

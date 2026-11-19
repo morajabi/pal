@@ -31,6 +31,10 @@ struct BackendSpec {
     var fullAccess: Bool
     /// Load the user's own MCP servers / settings / skills.
     var useUserSetup: Bool
+    /// The agent session this conversation belongs to (nil for the quick tier).
+    var sessionID: String? = nil
+    /// Continue an earlier Claude Code session / Codex thread instead of starting fresh.
+    var resumeID: String? = nil
 }
 
 enum BackendEvent {
@@ -62,8 +66,12 @@ protocol Backend: AnyObject {
 }
 
 enum Backends {
+    @MainActor
     static func make(_ spec: BackendSpec, accounts: Accounts) -> Backend? {
         switch spec.provider {
+        case .claudeAPI:
+            guard accounts.claudeAPI.signedIn else { return nil }
+            return ClaudeAPIBackend(spec: spec)
         case .claude:
             guard let path = accounts.claudePath else { return nil }
             return ClaudeBackend(executable: path, spec: spec)

@@ -126,6 +126,7 @@ final class Pal: NSObject {
         r.register(MacDataTools.all)
         r.register(SystemTools.all)
         r.register(ComputerUse.tools)
+        r.register(ShellTools.all)
     }
 
     private func wireVoice() {

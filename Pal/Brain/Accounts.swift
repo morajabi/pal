@@ -17,6 +17,8 @@ final class Accounts: ObservableObject {
 
     @Published private(set) var claude = Status()
     @Published private(set) var codex = Status()
+    /// A Claude API key in the Keychain (for people without Claude Code or Codex).
+    @Published private(set) var claudeAPI = Status()
     @Published private(set) var detected = false
     @Published private(set) var codexModels: [ModelOption] = Accounts.fallbackCodexModels
     @Published private(set) var browsePath: String?
@@ -43,15 +45,37 @@ final class Accounts: ObservableObject {
         ModelOption(id: "gpt-6.2-astra", title: "GPT-6.2-Astra", detail: "Most capable", efforts: ["low", "medium", "high", "xhigh"]),
     ]
 
-    func models(for p: ProviderID) -> [ModelOption] { p == .claude ? Self.claudeModels : codexModels }
+    func models(for p: ProviderID) -> [ModelOption] { p == .codex ? codexModels : Self.claudeModels }
 
-    func status(of p: ProviderID) -> Status { p == .claude ? claude : codex }
+    func status(of p: ProviderID) -> Status {
+        switch p {
+        case .claude: claude
+        case .codex: codex
+        case .claudeAPI: claudeAPI
+        }
+    }
+
+    func setClaudeAPIKey(_ key: String?) {
+        if let key, !key.trimmingCharacters(in: .whitespaces).isEmpty {
+            Keychain.set(key.trimmingCharacters(in: .whitespacesAndNewlines), for: Keychain.anthropicAccount)
+        } else {
+            Keychain.delete(Keychain.anthropicAccount)
+        }
+        refreshAPIKey()
+        onChange?()
+    }
+
+    private func refreshAPIKey() {
+        let key = Keychain.anthropicKey ?? ""
+        claudeAPI = Status(installed: true, signedIn: !key.isEmpty, account: key.isEmpty ? "" : "Key ending in …\(key.suffix(4))")
+    }
 
     /// The provider that answers: the user's pick if signed in, else whichever is (Claude first).
     var answeringProvider: ProviderID? {
         if let chosen = PalSettings.c.provider.provider, status(of: chosen).signedIn { return chosen }
         if claude.signedIn { return .claude }
         if codex.signedIn { return .codex }
+        if claudeAPI.signedIn { return .claudeAPI }
         return nil
     }
 
@@ -90,6 +114,7 @@ final class Accounts: ObservableObject {
                 self.npxPath = npxPath
                 self.claude = claude
                 self.codex = codex
+                self.refreshAPIKey()
                 self.detected = true
                 self.onChange?()
                 completion?()

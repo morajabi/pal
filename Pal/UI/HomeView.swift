@@ -223,7 +223,7 @@ private struct AgentRow: View {
                 HStack {
                     Text(session.title).fontWeight(.medium).lineLimit(1)
                     Spacer()
-                    Text(session.updated, style: .relative).font(.caption2).foregroundStyle(.tertiary)
+                    Text(session.updated.formatted(.relative(presentation: .named))).font(.caption2).foregroundStyle(.tertiary)
                 }
                 Text(line).font(.caption).foregroundStyle(.secondary).lineLimit(2)
             }

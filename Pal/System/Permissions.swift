@@ -171,7 +171,7 @@ final class Permissions: ObservableObject {
         var s = await state(k)
         if s == .notDetermined {
             request(k)
-            for _ in 0..<60 { // wait up to ~30s for the user to answer the prompt
+            for _ in 0..<40 { // wait up to ~20s for the user to answer the prompt
                 try await Task.sleep(for: .milliseconds(500))
                 s = await state(k)
                 if s != .notDetermined { break }

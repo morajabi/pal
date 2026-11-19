@@ -101,7 +101,7 @@ final class CodexBackend: Backend {
         rpc.ensureStarted { [weak self] error in
             guard let self else { return }
             if let error { self.failStart(error); return }
-            self.rpc.request("thread/start", self.threadParams()) { [weak self] result, error in
+            self.rpc.request(self.spec.resumeID == nil ? "thread/start" : "thread/resume", self.threadParams()) { [weak self] result, error in
                 guard let self else { return }
                 self.startingThread = false
                 if let error { self.failStart(Self.friendly(error)); return }
@@ -142,7 +142,7 @@ final class CodexBackend: Backend {
             config["mcp_servers"] = servers // replaces the user's list for quick answers
         }
         let agent = spec.tier == .agent
-        return [
+        var params: [String: Any] = [
             "model": spec.model.model,
             "cwd": spec.cwd.path,
             "sandbox": agent ? (spec.fullAccess ? "danger-full-access" : "workspace-write") : "read-only",
@@ -151,6 +151,12 @@ final class CodexBackend: Backend {
             "developerInstructions": spec.instructions,
             "config": config,
         ]
+        if let r = spec.resumeID {
+            params["threadId"] = r
+            params["excludeTurns"] = true
+            params.removeValue(forKey: "ephemeral")
+        }
+        return params
     }
 
     // MARK: Events

@@ -14,7 +14,7 @@ enum PalCoreTools {
                     props: [
                         "task": .string("Complete, self-contained instructions including everything the user said"),
                         "title": .string("2–5 word title, e.g. 'Watch Claude sessions'"),
-                        "provider": .oneOf(["claude", "codex"], "Only if the user asked: claude or codex (ChatGPT)"),
+                        "provider": .oneOf(["claude", "codex", "claudeAPI"], "Only if the user asked: claude, codex (ChatGPT) or claudeAPI"),
                         "model": .string("Only if the user asked for a model, e.g. opus, sonnet, gpt-6.2-astra"),
                         "effort": .oneOf(["low", "medium", "high", "xhigh", "max"], "Only if the user asked for more or less thinking"),
                     ], required: ["task", "title"]) { a, ctx in

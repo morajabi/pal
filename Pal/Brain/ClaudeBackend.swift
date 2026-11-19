@@ -71,6 +71,7 @@ final class ClaudeBackend: Backend {
             ]
         case .agent:
             a += ["--append-system-prompt", spec.instructions]
+            if let r = spec.resumeID { a += ["--resume", r] }
             if spec.fullAccess {
                 a += ["--permission-mode", "bypassPermissions"]
             } else {

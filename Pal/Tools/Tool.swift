@@ -1,7 +1,7 @@
 import Foundation
 
 enum ToolCategory: String, CaseIterable, Identifiable {
-    case pal, memory, skills, reminders, calendar, contacts, timers, apps, system, computer
+    case pal, memory, skills, reminders, calendar, contacts, timers, apps, system, computer, files
     var id: String { rawValue }
 
     var title: String {
@@ -16,6 +16,7 @@ enum ToolCategory: String, CaseIterable, Identifiable {
         case .apps: "Apps & Shortcuts"
         case .system: "System"
         case .computer: "Computer Use"
+        case .files: "Shell & Files (API agents)"
         }
     }
 
@@ -31,6 +32,7 @@ enum ToolCategory: String, CaseIterable, Identifiable {
         case .apps: "square.grid.2x2"
         case .system: "gearshape"
         case .computer: "cursorarrow.motionlines"
+        case .files: "terminal"
         }
     }
 
@@ -134,9 +136,11 @@ struct PalTool {
     let tiers: Set<Tier>
     let props: [String: Prop]
     let required: [String]
+    /// Claude Code and Codex already have this (shell, files): only offered to API-backed agents.
+    let harnessNative: Bool
     let run: Handler
 
-    init(_ name: String, _ title: String, category: ToolCategory, tiers: Set<Tier> = [.quick, .agent],
+    init(_ name: String, _ title: String, category: ToolCategory, tiers: Set<Tier> = [.quick, .agent], harnessNative: Bool = false,
          description: String, props: [String: Prop] = [:], required: [String] = [], run: @escaping Handler) {
         self.name = name
         self.title = title
@@ -145,6 +149,7 @@ struct PalTool {
         self.tiers = tiers
         self.props = props
         self.required = required
+        self.harnessNative = harnessNative
         self.run = run
     }
 
@@ -171,17 +176,18 @@ final class ToolRegistry {
 
     func tools(in category: ToolCategory) -> [PalTool] { tools.filter { $0.category == category } }
 
-    func available(for tier: Tier) -> [PalTool] {
+    func available(for tier: Tier, includeHarnessNative: Bool = false) -> [PalTool] {
         let c = PalSettings.c
         return tools.filter { tool in
             guard tool.tiers.contains(tier), c.isToolEnabled(tool.name) else { return false }
+            if tool.harnessNative && !includeHarnessNative { return false }
             if (tool.category == .memory) && !c.memoryEnabled { return false }
             return true
         }
     }
 
-    func call(_ name: String, args: [String: Any], context: ToolContext) async -> ToolOutput {
-        guard let tool = available(for: context.tier).first(where: { $0.name == name }) else {
+    func call(_ name: String, args: [String: Any], context: ToolContext, includeHarnessNative: Bool = false) async -> ToolOutput {
+        guard let tool = available(for: context.tier, includeHarnessNative: includeHarnessNative).first(where: { $0.name == name }) else {
             return .error("The tool “\(name)” is turned off or doesn't exist.")
         }
         do {

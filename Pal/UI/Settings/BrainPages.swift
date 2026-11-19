@@ -5,12 +5,25 @@ import SwiftUI
 struct ModelsPage: View {
     @ObservedObject var accounts: Accounts
     @ObservedObject var settings: PalSettings
+    @State private var apiKeyDraft = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            SettingsSection(title: "Accounts", footer: "Pal uses AI you already have: your Claude Code and Codex sign-ins (Claude and ChatGPT subscriptions). Nothing is stored by Pal.") {
+            SettingsSection(title: "Accounts", footer: "Pal uses AI you already have: your Claude Code and Codex sign-ins (Claude and ChatGPT subscriptions). No Claude Code or Codex? Add a Claude API key instead: Pal then runs agents itself, with its own tools plus shell and file access. The key is kept in your Keychain.") {
                 accountRow(.claude, accounts.claude)
                 accountRow(.codex, accounts.codex)
+                SettingsRow(title: "Claude API key", note: accounts.claudeAPI.signedIn ? accounts.claudeAPI.account : "Optional · from platform.claude.com") {
+                    HStack {
+                        if accounts.claudeAPI.signedIn {
+                            StatePill(text: "Saved", good: true)
+                            Button("Remove") { accounts.setClaudeAPIKey(nil) }
+                        } else {
+                            SecureField("sk-ant-…", text: $apiKeyDraft).frame(width: 180)
+                            Button("Save") { accounts.setClaudeAPIKey(apiKeyDraft); apiKeyDraft = "" }
+                                .disabled(apiKeyDraft.trimmingCharacters(in: .whitespaces).isEmpty)
+                        }
+                    }
+                }
                 SettingsRow(title: "") {
                     Button("Check Again") { accounts.detect() }
                 }
@@ -27,7 +40,7 @@ struct ModelsPage: View {
                     }.labelsHidden().fixedSize()
                 }
             }
-            SettingsSection(title: "Claude") {
+            SettingsSection(title: "Claude", footer: "Used for both Claude Code and the Claude API.") {
                 modelRow("Quick answers", $settings.config.claudeFast, Accounts.claudeModels)
                 modelRow("Agents", $settings.config.claudeAgent, Accounts.claudeModels)
             }
@@ -44,7 +57,7 @@ struct ModelsPage: View {
                 StatePill(text: s.signedIn ? "Connected" : (s.installed ? "Sign in needed" : "Missing"), good: s.signedIn)
                 if !s.signedIn {
                     Button(s.installed ? (p == .claude ? "Sign In…" : "Connect ChatGPT…") : "Get \(p.via)…") {
-                        if p == .claude { accounts.signInToClaude() } else { accounts.connectChatGPT() }
+                        if p == .codex { accounts.connectChatGPT() } else { accounts.signInToClaude() }
                     }
                 }
             }

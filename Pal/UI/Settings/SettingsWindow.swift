@@ -63,8 +63,9 @@ enum SettingsWindow {
             window = w
         }
         NSApp.setActivationPolicy(.regular)
-        NSApp.activate(ignoringOtherApps: true)
+        NSApp.activate()
         window?.makeKeyAndOrderFront(nil)
+        window?.orderFrontRegardless()
     }
 }
 
@@ -123,10 +124,11 @@ struct SettingsSection<Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title).font(.headline)
+            // Rows draw a divider above themselves; the first one hides under the box's border.
             VStack(alignment: .leading, spacing: 0) { content }
                 .padding(.horizontal, 14)
-                .padding(.vertical, 4)
                 .background(.background.secondary, in: RoundedRectangle(cornerRadius: 10))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
                 .overlay(RoundedRectangle(cornerRadius: 10).stroke(.separator.opacity(0.5)))
             if let footer {
                 Text(footer).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
@@ -151,8 +153,8 @@ struct SettingsRow<Control: View>: View {
             Spacer(minLength: 12)
             control
         }
-        .padding(.vertical, 8)
-        .overlay(alignment: .bottom) { Divider().opacity(0.5) }
+        .padding(.vertical, 9)
+        .overlay(alignment: .top) { Divider().opacity(0.5).padding(.top, -0.5) }
     }
 }
 

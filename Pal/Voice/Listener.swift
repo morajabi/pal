@@ -96,14 +96,12 @@ final class Listener {
             feed.setOutputFormat(analyzerFormat).forEach { continuation.yield($0) }
             let analyzer = SpeechAnalyzer(modules: [module])
             self.analyzer = analyzer
-            resultsTask = Task { [weak self] in
+            resultsTask = Task { @MainActor [weak self] in
                 do {
                     for try await (text, isFinal) in results {
-                        await MainActor.run {
-                            guard let self else { return }
-                            if isFinal { self.finalized += text; self.volatile = "" } else { self.volatile = text }
-                            self.onTranscript?(self.transcript)
-                        }
+                        guard let self else { return }
+                        if isFinal { self.finalized += text; self.volatile = "" } else { self.volatile = text }
+                        self.onTranscript?(self.transcript)
                     }
                 } catch {}
             }

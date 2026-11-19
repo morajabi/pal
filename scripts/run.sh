@@ -5,6 +5,6 @@ cd "$(dirname "$0")/.."
 xcodegen generate --quiet
 xcodebuild -project Pal.xcodeproj -scheme Pal -configuration Debug \
   -derivedDataPath build -destination 'platform=macOS' build -quiet "$@"
-pkill -x Pal 2>/dev/null || true
+pkill -f "Debug/Pal.app/Contents/MacOS/Pal" 2>/dev/null || true
 sleep 0.3
-open build/Build/Products/Debug/Pal.app
+open "build/Build/Products/Debug/Pal.app"

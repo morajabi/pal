@@ -4,7 +4,7 @@ import Foundation
 /// without Claude Code or Codex. Pal runs the tool loop itself with its own tools, plus
 /// Anthropic's hosted web search/fetch.
 @MainActor
-final class ClaudeAPIBackend: Backend {
+final class ClaudeAPIBackend: @preconcurrency Backend {
     let spec: BackendSpec
     var onEvent: ((BackendEvent) -> Void)?
 

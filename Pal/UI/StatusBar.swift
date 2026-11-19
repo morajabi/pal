@@ -109,6 +109,9 @@ final class StatusBar: NSObject, NSPopoverDelegate {
         }
         menu.addItem(.separator())
         add(menu, "Settings…", ",") { [weak self] in self?.pal.openSettings() }
+        if Updater.shared.isAvailable {
+            add(menu, "Check for Updates…") { Updater.shared.checkForUpdates() }
+        }
         add(menu, "Quit Pal", "q") { NSApp.terminate(nil) }
         return menu
     }

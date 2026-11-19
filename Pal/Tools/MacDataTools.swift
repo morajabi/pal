@@ -7,7 +7,7 @@ enum MacDataTools {
     @MainActor
     static var all: [PalTool] { reminders + calendar + contacts }
 
-    private static var store: EKEventStore { Permissions.shared.eventStore }
+    @MainActor private static var store: EKEventStore { Permissions.shared.eventStore }
 
     // MARK: Reminders
 
@@ -64,7 +64,7 @@ enum MacDataTools {
         ]
     }
 
-    private static func reminderLists(_ name: String?) throws -> [EKCalendar]? {
+    @MainActor private static func reminderLists(_ name: String?) throws -> [EKCalendar]? {
         guard let name else { return nil }
         let match = store.calendars(for: .reminder).filter { $0.title.localizedCaseInsensitiveContains(name) }
         guard !match.isEmpty else { throw PalError("No reminders list called “\(name)”.") }

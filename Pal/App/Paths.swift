@@ -19,7 +19,9 @@ enum Paths {
 
     static let support: URL = {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        return ensure(base.appendingPathComponent("Pal", isDirectory: true))
+        // Dev builds ("Pal Dev") keep their own state and tool socket.
+        let name = Bundle.main.bundleIdentifier == "app.pal.mac.dev" ? "Pal Dev" : "Pal"
+        return ensure(base.appendingPathComponent(name, isDirectory: true))
     }()
 
     /// The quick-answer model runs here: an empty folder, nothing to touch.

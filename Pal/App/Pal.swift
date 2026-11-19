@@ -70,6 +70,10 @@ final class Pal: NSObject {
         Scheduler.shared.start()
         TimerCenter.shared.start()
         Permissions.shared.refresh()
+        Updater.shared.onUpdateAvailable = { [weak self] version in
+            self?.showNotice("Pal \(version) is available.", detail: "Right-click the dot and choose **Check for Updates…** to install it.")
+        }
+        Updater.shared.start()
 
         accounts.onChange = { [weak self] in self?.statusBar.refresh() }
         accounts.onCodexLogin = { [weak self] ok, error in
@@ -426,7 +430,10 @@ final class Pal: NSObject {
         alarmRepeats = Timer.scheduledTimer(withTimeInterval: 1.6, repeats: true) { [weak self] t in
             count += 1
             NSSound(named: "Glass")?.play()
-            if count >= 8 { t.invalidate(); self?.alarmRepeats = nil }
+            if count >= 8 {
+                t.invalidate()
+                MainActor.assumeIsolated { self?.alarmRepeats = nil }
+            }
         }
     }
 

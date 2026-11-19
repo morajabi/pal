@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Generate project
+        run: |
+          brew install xcodegen
+          xcodegen generate
+
+      - name: Test
+        run: xcodebuild test -project Pal.xcodeproj -scheme Pal -destination 'platform=macOS' -derivedDataPath build -quiet
+
+      - name: Build release configuration (ad-hoc signed)
+        run: xcodebuild build -project Pal.xcodeproj -scheme Pal -configuration Release -destination 'generic/platform=macOS' -derivedDataPath build -quiet

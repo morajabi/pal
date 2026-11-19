@@ -45,6 +45,7 @@ struct GeneralPage: View {
                     }
                 }
             }
+            UpdatesSection(updater: Updater.shared)
             SettingsSection(title: "App") {
                 SettingsRow(title: "Launch at login") {
                     Toggle("", isOn: Binding(get: { launchAtLogin }, set: { pal.setLaunchAtLogin($0); launchAtLogin = pal.launchesAtLogin }))
@@ -59,6 +60,30 @@ struct GeneralPage: View {
             }
         }
         .onAppear { launchAtLogin = pal.launchesAtLogin }
+    }
+}
+
+private struct UpdatesSection: View {
+    @ObservedObject var updater: Updater
+
+    var body: some View {
+        SettingsSection(title: "Updates", footer: updater.isAvailable ? nil : "Updates are off in development builds.") {
+            SettingsRow(title: "Version", note: updater.version) {
+                if updater.isAvailable {
+                    Button("Check for Updates…") { updater.checkForUpdates() }.disabled(!updater.canCheck)
+                }
+            }
+            if updater.isAvailable {
+                SettingsRow(title: "Check automatically") {
+                    Toggle("", isOn: Binding(get: { updater.automaticallyChecks }, set: { updater.automaticallyChecks = $0 }))
+                        .toggleStyle(.switch).labelsHidden()
+                }
+                SettingsRow(title: "Download and install automatically") {
+                    Toggle("", isOn: Binding(get: { updater.automaticallyDownloads }, set: { updater.automaticallyDownloads = $0 }))
+                        .toggleStyle(.switch).labelsHidden()
+                }
+            }
+        }
     }
 }
 
